@@ -435,9 +435,12 @@ func (s *HandshakeState) WriteMessage(out, payload []byte) ([]byte, *CipherState
 	}
 	s.shouldWrite = false
 	s.msgIdx++
-	out, err = s.ss.EncryptAndHash(out, payload)
-	if err != nil {
-		return nil, nil, nil, err
+
+	if payload != nil {
+		out, err = s.ss.EncryptAndHash(out, payload)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 	}
 
 	if s.msgIdx >= len(s.messagePatterns) {
@@ -548,13 +551,15 @@ func (s *HandshakeState) ReadMessage(out, message []byte) ([]byte, *CipherState,
 			s.ss.MixKeyAndHash(s.psk)
 		}
 	}
-	out, err = s.ss.DecryptAndHash(out, message)
-	if err != nil {
-		s.ss.Rollback()
-		if rsSet {
-			s.rs = nil
+	if message != nil {
+		out, err = s.ss.DecryptAndHash(out, message)
+		if err != nil {
+			s.ss.Rollback()
+			if rsSet {
+				s.rs = nil
+			}
+			return nil, nil, nil, err
 		}
-		return nil, nil, nil, err
 	}
 	s.shouldWrite = true
 	s.msgIdx++
